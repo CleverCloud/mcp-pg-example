@@ -115,7 +115,6 @@ async function emptyDatabase() {
         'flaws',
         'abilities',
         'keywords',
-        'combat_statistics',
         'questworlds_stats',
         'monsters'
       ];
