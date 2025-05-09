@@ -1,0 +1,32 @@
+{
+  "name": "mcp-pg-example",
+  "version": "1.0.0",
+  "description": "PostgreSQL MCP Server example with LLM chat for database exploration",
+  "main": "src/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "postgres",
+    "llm",
+    "clever-cloud"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@langchain/langgraph": "^0.2.68",
+    "@langchain/mcp-adapters": "^0.4.2",
+    "@modelcontextprotocol/sdk": "^1.11.0",
+    "@modelcontextprotocol/server-postgres": "^0.6.2",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "langchain": "^0.3.24",
+    "pg": "^8.15.6"
+  }
+}

@@ -1,0 +1,24 @@
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Build directory
+dist/
+tmp/
+
+# OS specific files
+.DS_Store
+Thumbs.db

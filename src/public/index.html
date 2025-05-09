@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="img/favicon.ico" type="image/x-icon">
+  <title>PostgreSQL MCP Chat</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    h1 {
+      color: #0066cc;
+    }
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 70vh;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    .message {
+      margin-bottom: 15px;
+      padding: 10px 15px;
+      border-radius: 18px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+    .user-message {
+      background-color: #0066cc;
+      color: white;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+    .assistant-message {
+      background-color: #e9e9eb;
+      color: #333;
+      align-self: flex-start;
+    }
+    .chat-input {
+      display: flex;
+      padding: 10px;
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      margin-right: 10px;
+    }
+    .chat-input button {
+      padding: 10px 20px;
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .chat-input button:hover {
+      background-color: #0052a3;
+    }
+    .sql-query {
+      background-color: #f0f0f0;
+      padding: 10px;
+      border-radius: 5px;
+      font-family: monospace;
+      margin: 10px 0;
+      white-space: pre-wrap;
+    }
+    .query-result {
+      margin-top: 10px;
+      overflow-x: auto;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PostgreSQL MCP Chat</h1>
+    <p>Ask questions about your PostgreSQL database in natural language</p>
+  </header>
+
+  <div class="chat-container">
+    <div class="chat-messages" id="chat-messages">
+      <div class="message assistant-message">
+        Hello! I'm your PostgreSQL assistant. Ask me anything about your database, and I'll help you explore it.
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="user-input" placeholder="Ask a question about your database..." />
+      <button id="send-button">Send</button>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const chatMessages = document.getElementById('chat-messages');
+      const userInput = document.getElementById('user-input');
+      const sendButton = document.getElementById('send-button');
+
+      // Function to add a message to the chat
+      function addMessage(content, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+        messageDiv.innerHTML = content;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      // Function to send a message to the server
+      async function sendMessage(message) {
+        try {
+          addMessage(message, true);
+          
+          // Show loading indicator
+          const loadingId = 'loading-' + Date.now();
+          addMessage(`<div id="${loadingId}">Thinking...</div>`, false);
+          
+          const response = await fetch('/api/query', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: message }),
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to get response');
+          }
+          
+          const data = await response.json();
+          
+          // Remove loading indicator
+          const loadingElement = document.getElementById(loadingId);
+          if (loadingElement) {
+            loadingElement.remove();
+          }
+          
+          // Process the response messages to extract SQL and results
+          let resultHtml = '';
+          
+          if (data.response && Array.isArray(data.response)) {
+            // Find SQL query (from tool call)
+            const toolCallMessage = data.response.find(msg => 
+              msg.tool_calls && msg.tool_calls.length > 0 && msg.tool_calls[0].name === 'query'
+            );
+            
+            if (toolCallMessage && toolCallMessage.tool_calls && toolCallMessage.tool_calls[0]) {
+              const sql = toolCallMessage.tool_calls[0].args.sql;
+              resultHtml += `<div><strong>SQL Query:</strong><div class="sql-query">${sql}</div></div>`;
+            }
+            
+            // Find query results (from tool message)
+            const toolMessage = data.response.find(msg => msg.name === 'query');
+            if (toolMessage && toolMessage.content) {
+              let result;
+              try {
+                result = JSON.parse(toolMessage.content);
+                resultHtml += `<div><strong>Result:</strong><div class="query-result">${formatResult(result)}</div></div>`;
+              } catch (e) {
+                resultHtml += `<div><strong>Result:</strong><div class="query-result">${toolMessage.content}</div></div>`;
+              }
+            }
+          }
+          
+          // If we couldn't extract specific parts, just show the answer
+          if (resultHtml === '' && data.answer) {
+            resultHtml = data.answer;
+          }
+          
+          addMessage(resultHtml, false);
+        } catch (error) {
+          console.error('Error:', error);
+          addMessage('Sorry, there was an error processing your request.', false);
+        }
+      }
+
+      // Function to format query results
+      function formatResult(result) {
+        if (!result || result.length === 0) {
+          return 'No results found';
+        }
+        
+        if (typeof result === 'string') {
+          return result;
+        }
+        
+        // Check if result is an array of objects
+        if (Array.isArray(result) && typeof result[0] === 'object') {
+          const columns = Object.keys(result[0]);
+          
+          let tableHtml = '<table><thead><tr>';
+          columns.forEach(column => {
+            tableHtml += `<th>${column}</th>`;
+          });
+          tableHtml += '</tr></thead><tbody>';
+          
+          result.forEach(row => {
+            tableHtml += '<tr>';
+            columns.forEach(column => {
+              tableHtml += `<td>${row[column] !== null ? row[column] : 'NULL'}</td>`;
+            });
+            tableHtml += '</tr>';
+          });
+          
+          tableHtml += '</tbody></table>';
+          return tableHtml;
+        }
+        
+        // Fallback for other formats
+        return JSON.stringify(result, null, 2);
+      }
+
+      // Event listeners
+      sendButton.addEventListener('click', () => {
+        const message = userInput.value.trim();
+        if (message) {
+          sendMessage(message);
+          userInput.value = '';
+        }
+      });
+
+      userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const message = userInput.value.trim();
+          if (message) {
+            sendMessage(message);
+            userInput.value = '';
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
