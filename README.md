@@ -1,4 +1,4 @@
-![Clever Cloud logo](/github-assets/clever-cloud-logo.png)
+![Clever Cloud logo](/img/clever-cloud-logo.png)
 
 # PostgreSQL MCP Server with LLM Chat Example on Clever Cloud
 [![Clever Cloud - PaaS](https://img.shields.io/badge/Clever%20Cloud-PaaS-orange)](https://clever-cloud.com)
