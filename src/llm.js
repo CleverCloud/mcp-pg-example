@@ -20,20 +20,20 @@ function initLLM() {
   }
 
   console.log(`Initializing LLM with model: ${LLM_API_MODEL}`);
-  
+
   // Log the LLM configuration
   console.log(`Using LLM API URL: ${LLM_API_URL}`);
-  
+
   // Create a new LLM client using the API configuration from environment variables
   const llm = new ChatOpenAI({
     openAIApiKey: LLM_API_KEY,
     modelName: LLM_API_MODEL,
-    temperature: 0.2,
+    temperature: 1.0,
     configuration: {
       baseURL: LLM_API_URL,
     },
   });
-  
+
   return llm;
 }
 
@@ -44,13 +44,13 @@ function initLLM() {
  */
 export function createAgent(tools) {
   const llm = initLLM();
-  
+
   // Create a ReAct agent with the LLM and tools
   const agent = createReactAgent({
     llm,
     tools,
   });
-  
+
   return agent;
 }
 

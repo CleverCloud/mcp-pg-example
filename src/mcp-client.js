@@ -12,14 +12,15 @@ const POSTGRESQL_ADDON_URI = process.env.POSTGRESQL_ADDON_URI;
 // Singleton instance of the MCP client
 let mcpClient = null;
 let mcpTools = null;
+let mcpResources = null;
 
 /**
  * Initialize the MCP client for PostgreSQL
- * @returns {Promise<Object>} Object containing the MCP client and tools
+ * @returns {Promise<Object>} Object containing the MCP client, tools, and resources
  */
 export async function initMCPClient() {
-  if (mcpClient && mcpTools) {
-    return { client: mcpClient, tools: mcpTools };
+  if (mcpClient && mcpTools && mcpResources) {
+    return { client: mcpClient, tools: mcpTools, resources: mcpResources };
   }
 
   if (!POSTGRESQL_ADDON_URI) {
@@ -42,7 +43,26 @@ export async function initMCPClient() {
   mcpTools = await loadMcpTools("query", mcpClient);
   console.log("Available MCP tools:", mcpTools.map(tool => tool.name));
 
-  return { client: mcpClient, tools: mcpTools };
+  // List available MCP resources
+  const resourcesResponse = await mcpClient.listResources();
+  mcpResources = resourcesResponse.resources || [];
+  console.log("Available MCP resources:", mcpResources.map(resource => resource.uri));
+
+  return { client: mcpClient, tools: mcpTools, resources: mcpResources };
+}
+
+/**
+ * Read a specific MCP resource by URI
+ * @param {string} uri - The URI of the resource to read
+ * @returns {Promise<Object>} The resource contents
+ */
+export async function readMCPResource(uri) {
+  if (!mcpClient) {
+    throw new Error("MCP client not initialized. Call initMCPClient() first.");
+  }
+
+  const response = await mcpClient.readResource({ uri });
+  return response;
 }
 
 /**
@@ -55,6 +75,7 @@ export async function closeMCPClient() {
     await mcpClient.close();
     mcpClient = null;
     mcpTools = null;
+    mcpResources = null;
   }
 }
 
